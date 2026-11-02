@@ -8,7 +8,89 @@ st.set_page_config(
     page_icon="🛒",
     layout="wide"
 )
+# VINTAGE THEME STYLING
 
+st.markdown("""
+<style>
+
+.stApp {
+    background-color: #F5F0E7;
+    color: #49392F;
+}
+
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+    max-width: 1400px;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background-color: #E8DECE;
+    border-right: 1px solid #D5C7B5;
+}
+
+/* Headings */
+h1, h2, h3 {
+    color: #49392F !important;
+    font-family: Georgia, serif !important;
+}
+
+/* Text */
+p, label {
+    color: #625246;
+}
+
+/* KPI cards */
+[data-testid="stMetric"] {
+    background-color: #FFFDF8;
+    border: 1px solid #E3D8C8;
+    border-radius: 14px;
+    padding: 18px;
+    box-shadow: 0 3px 10px rgba(73,57,47,0.05);
+}
+
+/* Metric text */
+[data-testid="stMetricLabel"] {
+    color: #817461 !important;
+}
+
+[data-testid="stMetricValue"] {
+    color: #49392F !important;
+}
+
+/* Buttons */
+.stButton > button,
+.stDownloadButton > button {
+    background-color: #879078;
+    color: white;
+    border: none;
+    border-radius: 9px;
+}
+
+.stButton > button:hover,
+.stDownloadButton > button:hover {
+    background-color: #6F7A64;
+    color: white;
+}
+
+/* Data table */
+[data-testid="stDataFrame"] {
+    border: 1px solid #E3D8C8;
+    border-radius: 10px;
+}
+
+/* Divider */
+hr {
+    border-color: #DED3C3;
+}
+
+footer {
+    visibility: hidden;
+}
+
+</style>
+""", unsafe_allow_html=True)
 st.title("🛒 E-Commerce Business Intelligence Dashboard")
 st.write("Analyze sales, revenue, orders, and customer behavior.")
 
@@ -88,37 +170,78 @@ if page == "Overview":
     (total_profit / total_revenue) * 100
     if total_revenue > 0 else 0
 )
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    
+    st.subheader("Business Performance")
 
-    col1.metric("Total Revenue", f"₹{total_revenue:,.0f}")
-    col2.metric("Total Profit", f"₹{total_profit:,.0f}")
-    col3.metric("Total Orders", total_orders)
-    col4.metric("Products Sold", int(df["Quantity"].sum()))
-    col5.metric("Unique Customers", total_customers)
-    col6.metric("Profit Margin", f"{profit_margin:.2f}%")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric("💰 Total Revenue", f"₹{total_revenue:,.0f}")
+
+    with col2:
+        st.metric("📈 Total Profit", f"₹{total_profit:,.0f}")
+
+    with col3:
+        st.metric("📦 Total Orders", total_orders)
+
+    col4, col5, col6 = st.columns(3)
+
+    with col4:
+        st.metric("🛍️ Products Sold", int(df["Quantity"].sum()))
+
+    with col5:
+        st.metric("👥 Unique Customers", total_customers)
+
+    with col6:
+        st.metric("🌿 Profit Margin", f"{profit_margin:.2f}%")
+
     if profit_margin >= 20:
         st.success("Sales Performance: Good profit margin")
     elif profit_margin > 0:
         st.info("Sales Performance: Positive profit, but improvement is possible")
     else:
         st.warning("Sales Performance: No profit recorded")
+    
     st.subheader("Revenue Trend")
 
     daily_revenue = df.groupby(
         df["Order_Date"].dt.date
     )["Revenue"].sum()
 
-  
-    st.line_chart(daily_revenue)
+    st.line_chart(
+        daily_revenue,
+        color="#879078",
+        height=350
+    )
 
     st.subheader("Revenue by City")
+
     city_revenue = df.groupby("City")["Revenue"].sum()
     city_revenue = city_revenue.sort_values(ascending=False)
-    st.bar_chart(city_revenue)
 
+    st.bar_chart(
+        city_revenue,
+        color="#B47D5C",
+        horizontal=True,
+        height=350
+    )
+
+
+   
     st.subheader("Recent Sales Data")
 
-    st.dataframe(df, use_container_width=True)
+    display_df = df.copy()
+
+    display_df["Order_Date"] = (
+        display_df["Order_Date"].dt.strftime("%d %b %Y")
+    )
+
+    st.dataframe(
+        display_df,
+        use_container_width=True,
+        hide_index=True
+    )
+
 
     csv_data = df.to_csv(index=False).encode("utf-8")
 
@@ -129,6 +252,7 @@ if page == "Overview":
         mime="text/csv"
     )
 
+   
     st.subheader("💡 Business Insights")
 
     if not df.empty:
@@ -136,31 +260,65 @@ if page == "Overview":
         best_city = df.groupby("City")["Revenue"].sum().idxmax()
         best_product = df.groupby("Product")["Quantity"].sum().idxmax()
 
-        st.success(
-            f"Top revenue-generating category: {best_category}"
+        best_profit_category = df.groupby("Category")["Profit"].sum().idxmax()
+
+        popular_payment = (
+            df.groupby("Payment_Method")["Order_ID"]
+            .nunique()
+            .idxmax()
         )
-        st.info(
-            f"City generating the highest revenue: {best_city}"
+
+        lowest_city = df.groupby("City")["Revenue"].sum().idxmin()
+
+        average_order_value = (
+            total_revenue / total_orders if total_orders > 0 else 0
         )
-        st.write(
-            f"Best-selling product by quantity: {best_product}"
-        )
+
+        st.success(f"🏆 Top revenue-generating category: {best_category}")
+        st.info(f"📍 Highest revenue-generating city: {best_city}")
+        st.success(f"💰 Most profitable category: {best_profit_category}")
+        st.info(f"🛍️ Best-selling product: {best_product}")
+        st.info(f"💳 Most popular payment method: {popular_payment}")
+        st.warning(f"📉 Lowest revenue-generating city: {lowest_city}")
+
+        st.write(f"Average Order Value: ₹{average_order_value:,.2f}")
+
     else:
         st.warning("No sales records match the selected filters.")
 
+
+
 elif page == "Sales Analysis":
     st.subheader("Sales Analysis")
+
+    st.write("### Monthly Revenue")
 
     monthly_sales = df.groupby(
         df["Order_Date"].dt.to_period("M")
     )["Revenue"].sum()
 
-    st.write("### Monthly Revenue")
-    st.bar_chart(monthly_sales)
+    monthly_sales.index = monthly_sales.index.astype(str)
+
+    st.bar_chart(
+        monthly_sales,
+        color="#879078",
+        height=350
+    )
+    st.bar_chart(
+        monthly_sales,
+        color="#879078",
+        height=350
+    )
 
     st.write("### Revenue by Category")
+
     category_sales = df.groupby("Category")["Revenue"].sum()
-    st.bar_chart(category_sales)
+
+    st.bar_chart(
+        category_sales,
+        color="#B47D5C",
+        height=350
+    )
 
     st.write("### Profit by Category")
     st.write("### Profit Alerts")
@@ -169,26 +327,38 @@ elif page == "Sales Analysis":
         lowest_profit_category = (
             df.groupby("Category")["Profit"].sum().idxmin()
         )
-
         st.warning(
             f"Monitor this category: {lowest_profit_category}"
         )
+    else:
+        st.info("No data available for the selected filters.")
+
     category_profit = df.groupby("Category")["Profit"].sum()
     category_profit = category_profit.sort_values(ascending=False)
 
-    st.bar_chart(category_profit)
+    st.bar_chart(
+        category_profit,
+        color="#879078",
+        height=350
+    )
 
     st.write("### Top-Selling Products")
 
     product_sales = df.groupby("Product")["Quantity"].sum()
     product_sales = product_sales.sort_values(ascending=False)
 
-    st.bar_chart(product_sales.head(10))
+    st.bar_chart(
+        product_sales.head(10),
+        color="#C5A77D",
+        height=350
+    )
+
     st.write("### Revenue vs Cost")
 
     comparison = df.groupby("Category")[["Revenue", "Cost"]].sum()
 
-    st.bar_chart(comparison)
+    st.bar_chart(comparison, height=350)
+
     st.write("### Monthly Profit Trend")
 
     monthly_profit = df.groupby(
@@ -197,7 +367,12 @@ elif page == "Sales Analysis":
 
     monthly_profit.index = monthly_profit.index.astype(str)
 
-    st.line_chart(monthly_profit)
+    st.line_chart(
+        monthly_profit,
+        color="#A68B78",
+        height=350
+    )
+
     st.write("### Top 5 Products by Revenue")
 
     top_products = (
@@ -207,8 +382,12 @@ elif page == "Sales Analysis":
         .head(5)
     )
 
-    st.bar_chart(top_products)
-    
+    st.bar_chart(
+        top_products,
+        color="#B47D5C",
+        height=350
+    )
+
     st.write("### Daily Sales Summary")
 
     daily_sales = df.groupby(
@@ -229,26 +408,26 @@ elif page == "Customer Analysis":
     customer_sales = customer_sales.sort_values(ascending=False)
 
     st.write("### Revenue by Customer")
-    st.bar_chart(customer_sales)
+    st.bar_chart(customer_sales, color="#879078")
 
     st.write("### Orders by City")
     city_orders = df.groupby("City")["Order_ID"].nunique()
-    st.bar_chart(city_orders)
+    st.bar_chart(city_orders, color="#B47D5C")
 
     st.write("### Revenue by Payment Method")
     payment_revenue = df.groupby("Payment_Method")["Revenue"].sum()
     payment_revenue = payment_revenue.sort_values(ascending=False)
-    st.bar_chart(payment_revenue)
+    st.bar_chart(payment_revenue, color="#C5A77D")
 
     st.write("### Orders by Payment Method")
     payment_orders = df.groupby("Payment_Method")["Order_ID"].nunique()
     payment_orders = payment_orders.sort_values(ascending=False)
-    st.bar_chart(payment_orders)
+    st.bar_chart(payment_orders, color="#A68B78")
 
     st.write("### Top 5 Customers by Spending")
     top_customers = customer_sales.head(5)
-    st.bar_chart(top_customers)
-    
+    st.bar_chart(top_customers, color="#879078")
+
     customer_report = (
         df.groupby("Customer")
         .agg(
@@ -265,4 +444,3 @@ elif page == "Customer Analysis":
         file_name="customer_report.csv",
         mime="text/csv"
     )
-
